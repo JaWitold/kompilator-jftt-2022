@@ -1,0 +1,17 @@
+(zapis binarny liczby - zoptymalizowany)
+RESET c
+DEC c
+GET
+JNEG 11
+SWAP b
+RESET a
+ADD b
+SHIFT c
+SWAP b
+SUB b
+SUB b
+PUT
+SWAP b
+JPOS -9
+HALT
+

@@ -1,0 +1,29 @@
+(zapis binarny liczby)
+RESET d
+INC d
+RESET e
+DEC e
+GET
+JNEG 21
+SWAP b
+RESET a
+ADD b
+SHIFT e
+SHIFT d
+SWAP c
+RESET a
+ADD b
+SUB c
+JZERO 5
+RESET a
+INC a
+PUT
+JUMP 3
+RESET a
+PUT
+SWAP b
+SHIFT e
+JZERO 2
+JUMP -19
+HALT
+

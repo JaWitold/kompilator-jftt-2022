@@ -1,0 +1,71 @@
+(write start)
+(const_gen start a 34)
+RESET a
+SWAP a
+INC a
+ADD a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+SWAP a
+(const_gen stop a 34)
+(const_gen start b -1234567890)
+RESET b
+SWAP b
+INC a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+INC a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+ADD a
+INC a
+ADD a
+INC a
+ADD a
+ADD a
+ADD a
+ADD a
+ADD a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+ADD a
+INC a
+ADD a
+INC a
+ADD a
+ADD a
+INC a
+ADD a
+ADD a
+ADD a
+INC a
+ADD a
+RESET h
+SWAP h
+SUB h
+RESET h
+SWAP b
+(const_gen stop b -1234567890)
+SWAP b
+STORE a
+SWAP a
+PUT
+SWAP a
+(write stop)
+HALT

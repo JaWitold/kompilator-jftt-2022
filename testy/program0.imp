@@ -1,0 +1,17 @@
+VAR
+    n p
+BEGIN
+    READ n;
+    IF n GEQ 0 THEN
+	REPEAT
+	    p ASSIGN n DIV 2;
+	    p ASSIGN 2 TIMES p;
+	    IF n NEQ p THEN 
+		WRITE 1;
+	    ELSE 
+		WRITE 0;
+	    ENDIF
+	    n ASSIGN n DIV 2;
+	UNTIL n EQ 0;
+    ENDIF
+END

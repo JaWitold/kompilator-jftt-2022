@@ -1,0 +1,79 @@
+RESET h
+INC h
+RESET a		(generowanie 100)
+INC a
+SHIFT h
+INC a
+INC h
+INC h
+SHIFT h
+INC a
+DEC h
+SHIFT h
+DEC h
+SWAP b		(r[b]<-n)
+RESET a
+ADD b
+SWAP d		(r[d]<-i=n)
+RESET a
+ADD b
+DEC a
+DEC a		(licznik for r[e])
+JNEG 14		(wyjście for)
+SWAP e
+RESET a
+ADD d
+DEC a
+DEC a		(numer pamięci [i-2])
+SWAP f
+SWAP h
+STORE f		(sito[j]<-0)
+SWAP h
+DEC d
+DEC e
+SWAP e
+JUMP -13	(endfor)
+RESET a
+INC a
+INC a
+SWAP d		(r[d]<-i=2)
+RESET a
+ADD b
+DEC a
+DEC a		(licznik for r[e])
+JNEG 35		(wyjscie for)
+SWAP e
+RESET a
+ADD d
+DEC a
+DEC a		(numer pamięci [i-2])
+SWAP f
+LOAD f		(r[a]<-sito[i])
+JZERO 23	(sito[i]==0)
+RESET a
+ADD d
+ADD d
+SWAP c		(r[c]<-j=i+i)
+RESET a
+ADD b
+SUB c		(j<=n)
+JNEG 12		(wyjście WHILE)
+RESET a
+ADD c
+DEC a
+DEC a		(numer pamięci [j-2])
+SWAP f
+RESET a
+STORE f		(sito[j]<-0)
+SWAP c
+ADD d
+SWAP c		(r[c]<-j=j+i)
+JUMP -14
+SWAP d
+PUT		(WRITE i)
+SWAP d
+INC d
+DEC e
+SWAP e
+JUMP -34
+HALT

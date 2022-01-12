@@ -1,0 +1,10 @@
+( Błąd w linii 7: zabroniona modyfikacja iteratora i )
+VAR
+  a, b[10:10]
+BEGIN
+  FOR i FROM 0 TO 9 DO 
+    b[i] ASSIGN i TIMES i;
+    i ASSIGN i PLUS 2;
+  ENDFOR
+  a ASSIGN b[1];
+END
