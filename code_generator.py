@@ -33,7 +33,6 @@ class CodeGenerator:
                         if self.symbols[value[1]].initialized:
                             self.load_variable_address(value[1], register)
                             self.code.append(f"LOAD {register}")
-
                         else:
                             raise Exception(f"Use of uninitialized variable {value[1]}")
 
@@ -65,7 +64,10 @@ class CodeGenerator:
                         else:
                             raise Exception(f"Reading to undeclared variable {target[1]}")
                     elif target[0] == "array":
-                        self.load_array_address_at(target[1], target[2], register1, 'c')
+                        if type(target[2]) == int:
+                            self.load_array_address_at(target[1], target[2], register1, 'c')
+                        else:
+                            self.load_array_address_at(target[1], target[2], register1, 'c')
                 else:
                     self.load_variable_address(target, register1)
                     self.symbols[target].initialized = True
@@ -86,26 +88,33 @@ class CodeGenerator:
                 target_reg = 'a'
                 second_reg = 'b'
                 third_reg = 'c'
-                
+                self.calculate_expression(expression)
+                self.code.append(f"SWAP h")
+
                 if type(target) == tuple:
                     if target[0] == "undeclared":
                         if target[1] in self.symbols.iterators:
                             raise Exception(f"Assigning to iterator {target[1]}")
                         else:
                             raise Exception(f"Assigning to undeclared variable {target[1]}")
-                    elif target[0] == "array":                       
-                        self.load_array_address_at(target[1], target[2], second_reg, third_reg)
-                        #W sec_reg jest poprawny adress pod który będziemy zapisywać
+                    elif target[0] == "array":
+                        if type(target[2]) == int:
+                            self.load_array_address_at(target[1], target[2], second_reg, third_reg)
+                        else:
+                            self.load_array_address_at(target[1], target[2], second_reg, third_reg)
+                            #TEN SWAP JEST ŹRÓŁEM PROBLEMÓW
+                            # self.code.append(f"SWAP {second_reg}")
+
                 else:
                     if type(self.symbols[target]) == Variable:
                         self.load_variable_address(target, second_reg)
                         self.symbols[target].initialized = True
                     else:
                         raise Exception(f"Assigning to array {target} with no index provided")
-                self.calculate_expression(expression)
+                self.code.append(f"SWAP h")
 
-                # self.code.append(f"PUT")
                 self.code.append(f"SWAP {target_reg}")
+                # self.code.append(f"PUT")
                 self.code.append(f"STORE {second_reg}")
                 self.code.append(f"SWAP {target_reg}")
                 self.code.append(f"(assign stop)")
@@ -944,6 +953,8 @@ class CodeGenerator:
                 
                 var = self.symbols.get_variable(array)
                 self.gen_const(var.memory_offset - var.first_index, reg1)
+                # print(var.memory_offset - var.first_index)
+
                 self.code.append(f"SWAP {reg1}")
                 self.code.append(f"ADD {reg2}")
                 self.code.append(f"SWAP {reg1}")
