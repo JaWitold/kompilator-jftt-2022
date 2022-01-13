@@ -15,7 +15,7 @@ class CodeGenerator:
     def gen_code_from_commands(self, commands):
         for command in commands:
             if command[0] == "write":
-                print("write")
+                # print("write")
                 value = command[1]
                 register = 'a'
                 register1 = 'b'
@@ -47,15 +47,14 @@ class CodeGenerator:
                         self.code.append(f"SWAP {register1}")
                     else:
                         self.gen_const(address, register)
+                        self.code.append(f"LOAD {register}")
                 self.code.append(f"PUT")
 
             elif command[0] == "read":
-                print("read")
 
                 target = command[1]
                 register = 'a'
                 register1 = 'b'
-                self.code.append(f"(read start)")
 
                 if type(target) == tuple:
                     if target[0] == "undeclared":
@@ -78,10 +77,8 @@ class CodeGenerator:
                 self.code.append(f"STORE {register1}")
                 self.code.append(f"SWAP {register}")
 
-                self.code.append(f"(read stop)")
 
             elif command[0] == "assign":
-                self.code.append(f"(assign start)")
 
                 target = command[1]
                 expression = command[2]
@@ -117,10 +114,8 @@ class CodeGenerator:
                 # self.code.append(f"PUT")
                 self.code.append(f"STORE {second_reg}")
                 self.code.append(f"SWAP {target_reg}")
-                self.code.append(f"(assign stop)")
 
             elif command[0] == "if":
-                self.code.append(f"(if start)")
 
                 condition = self.simplify_condition(command[1])
                 if isinstance(condition, bool):
@@ -135,12 +130,10 @@ class CodeGenerator:
                     command_end = len(self.code)
                     for i in range(condition_start, command_start):
                         self.code[i] = self.code[i].replace('finish', str(command_end - i))
-                self.code.append(f"(if stop)")
 
             elif command[0] == "ifelse":
-                self.code.append(f"(if else start)")
-
                 condition = self.simplify_condition(command[1])
+                print(condition)
                 if isinstance(condition, bool):
                     if condition:
                         self.gen_code_from_commands(command[2])
@@ -148,6 +141,7 @@ class CodeGenerator:
                         self.gen_code_from_commands(command[3])
                 else:
                     self.prepare_consts_before_block(command[-1])
+
                     condition_start = len(self.code)
                     self.check_condition(command[1])
                     if_start = len(self.code)
@@ -158,9 +152,9 @@ class CodeGenerator:
                     command_end = len(self.code)
                     self.code[else_start - 1] = self.code[else_start - 1].replace('finish',
                                                                                   str(command_end - else_start + 1))
+                    print(self.code[else_start -1])
                     for i in range(condition_start, if_start):
                         self.code[i] = self.code[i].replace('finish', str(else_start - i))
-                self.code.append(f"(if else stop)")
 
             elif command[0] == "while":
                 condition = self.simplify_condition(command[1])
@@ -231,7 +225,7 @@ class CodeGenerator:
                 self.code.append("JUMP finnish")
 
                 loop_start = len(self.code)
-                print(loop_start)
+                # print(loop_start)
                 self.gen_code_from_commands(command[4])
                 self.code.append(f"INC f")
                 self.gen_const(bound_address, 'e')
@@ -313,7 +307,6 @@ class CodeGenerator:
                     self.code.append(f"SWAP f")
 
     def gen_const(self, const, reg='a'):
-        self.code.append(f"(const_gen start {reg} {const})")
         self.code.append(f"RESET {reg}")
         self.code.append(f"SWAP {reg}")
         if const > 0:
@@ -340,7 +333,6 @@ class CodeGenerator:
             const = -const
 
         self.code.append(f"SWAP {reg}")
-        self.code.append(f"(const_gen stop {reg} {const})")
 
 
     def calculate_expression(self, expression, target_reg='a', second_reg='b', third_reg='c', fourth_reg='d', fifth_reg='e', sixth_reg='f', seventh_reg='g', eighth_reg='h'):
@@ -435,16 +427,15 @@ class CodeGenerator:
                         return
 
                 if expression[1] == expression[2]:
-                    self.calculate_expression(expression[1], second_reg, target_reg)
+                    self.calculate_expression(expression[1], second_reg, third_reg)
                     self.code.append(f"RESET {third_reg}")
                     self.code.append(f"SWAP {third_reg}")
                     self.code.append(f"ADD {second_reg}")
                     self.code.append(f"SWAP {third_reg}")
 
                 else:
-                    self.calculate_expression(expression[1], second_reg, target_reg)
-                    self.calculate_expression(expression[2], third_reg, target_reg)
-                self.code.append(f"(mnożenie start)")
+                    self.calculate_expression(expression[1], second_reg, fourth_reg)
+                    self.calculate_expression(expression[2], third_reg, fourth_reg)
 
                 self.code.append(f"RESET a")
                 self.code.append(f"RESET {fourth_reg}")
@@ -509,7 +500,6 @@ class CodeGenerator:
                 self.code.append(f"JUMP 2")
                 self.code.append(f"SWAP {fourth_reg}")
                 self.code.append(f"SWAP {target_reg}")
-                self.code.append(f"(mnożenie stop)")
                 
 
             elif expression[0] == "div":
@@ -522,8 +512,9 @@ class CodeGenerator:
 
                 elif expression[1] == expression[2]:
                     self.calculate_expression(expression[1], third_reg, second_reg)
+                    self.code.append(f"SWAP {third_reg}")
+                    self.code.append(f"JZERO 3")
                     self.code.append(f"RESET {target_reg}")
-                    self.code.append(f"JZERO {third_reg} 2")
                     self.code.append(f"INC {target_reg}")
                     return
 
@@ -542,37 +533,35 @@ class CodeGenerator:
                     elif val & (val - 1) == 0:
                         self.calculate_expression(expression[var], target_reg, second_reg)
                         while val > 1:
-                            self.code.append(f"(dzielenie przez 2 start)")
+                            # print(f"(dzielenie przez 2 start)")
                             self.code.append(f"RESET h")
                             self.code.append(f"DEC h")
                             self.code.append(f"SWAP {target_reg}")
                             self.code.append(f"SHIFT h")
                             self.code.append(f"SWAP {target_reg}")
-                            self.code.append(f"(dzielenie przez 2 stop)")
 
                             val /= 2
                         return
 
-                self.calculate_expression(expression[1], third_reg, second_reg)
-                self.calculate_expression(expression[2], fourth_reg, second_reg)
+                self.calculate_expression(expression[1], fourth_reg, second_reg)
+                self.calculate_expression(expression[2], fifth_reg, second_reg)
+
                 self.perform_division(target_reg, second_reg, third_reg, fourth_reg, fifth_reg)
 
             elif expression[0] == "mod":
                 if expression[1][0] == expression[2][0] == "const":
-                    print(f"xxx {expression[1][1]} % {expression[2][1]}")
-                    self.code.append(f"(MOD start const)")
+                    # print(f"xxx {expression[1][1]} % {expression[2][1]}")
                     self.gen_const(expression[1][1] % expression[2][1], target_reg)
-                    self.code.append(f"(MOD stop const)")
 
                     return
 
-                # elif expression[1] == expression[2]:
-                #     self.code.append(f"RESET {target_reg}")
-                #     return
+                elif expression[1] == expression[2]:
+                    self.code.append(f"RESET {target_reg}")
+                    return
 
-                # elif const and const == 1 and expression[const][1] == 0:
-                #     self.code.append(f"RESET {target_reg}")
-                #     return
+                elif const and const == 1 and expression[const][1] == 0:
+                    self.code.append(f"RESET {target_reg}")
+                    return
 
                 # elif const and const == 2:
                 #     val = expression[const][1]
@@ -590,7 +579,6 @@ class CodeGenerator:
                 self.calculate_expression(expression[1], fourth_reg, second_reg)
                 self.calculate_expression(expression[2], fifth_reg, second_reg)
 
-                self.code.append(f"(MOD start)")
                 self.code.append(f"RESET {second_reg}")
                 self.code.append(f"RESET {third_reg}")
 
@@ -763,61 +751,170 @@ class CodeGenerator:
                 self.code.append(f"SWAP {second_reg}")
                 self.code.append(f"SWAP {second_reg}")
                 self.code.append(f"SWAP {target_reg}")
-                self.code.append(f"(MOD stop)")
 
 
-    def perform_division(self, quotient_register='a', remainder_register='b', dividend_register='c',
-                         divisor_register='d', temp_register='e'):
-        self.code.append(f"(DZIELENIE)")
-        # start = len(self.code)
-        # self.code.append(f"RESET {quotient_register}")
-        # self.code.append(f"RESET {remainder_register}")
-        # self.code.append(f"JZERO {divisor_register} finish")
-        # self.code.append(f"ADD {remainder_register} {dividend_register}")
+    def perform_division(self, target_reg='a', second_reg='b', third_reg='c', fourth_reg='d', fifth_reg='e', sixth_reg='f', seventh_reg='g', eighth_reg='h'):
 
-        # self.code.append(f"RESET {dividend_register}")
-        # self.code.append(f"ADD {dividend_register} {divisor_register}")
-        # self.code.append(f"RESET {temp_register}")
-        # self.code.append(f"ADD {temp_register} {remainder_register}")
-        # self.code.append(f"SUB {temp_register} {dividend_register}")
-        # self.code.append(f"JZERO {temp_register} block_start")
-        # self.code.append(f"RESET {temp_register}")
-        # self.code.append(f"ADD {temp_register} {dividend_register}")
-        # self.code.append(f"SUB {temp_register} {remainder_register}")
-        # self.code.append(f"JZERO {temp_register} 3")
-        # self.code.append(f"SHR {dividend_register}")
-        # self.code.append(f"JUMP 3")
-        # self.code.append(f"SHL {dividend_register}")
-        # self.code.append(f"JUMP -7")
+        self.code.append(f"RESET {second_reg}")
+        self.code.append(f"RESET {third_reg}")
 
-        # block_start = len(self.code)
-        # self.code.append(f"RESET {temp_register}")
-        # self.code.append(f"ADD {temp_register} {dividend_register}")
-        # self.code.append(f"SUB {temp_register} {remainder_register}")
-        # self.code.append(f"JZERO {temp_register} 2")
-        # self.code.append(f"JUMP finish")
-        # self.code.append(f"SUB {remainder_register} {dividend_register}")
-        # self.code.append(f"INC {quotient_register}")
+        self.code.append(f"SWAP {fourth_reg}")
+        self.code.append(f"JZERO 3")
+        self.code.append(f"SWAP {fourth_reg}")
+        self.code.append(f"SWAP {fifth_reg}")
+        self.code.append(f"JZERO 76")
+        self.code.append(f"SWAP {fifth_reg}")
 
-        # midblock_start = len(self.code)
-        # self.code.append(f"RESET {temp_register}")
-        # self.code.append(f"ADD {temp_register} {dividend_register}")
-        # self.code.append(f"SUB {temp_register} {remainder_register}")
-        # self.code.append(f"JZERO {temp_register} block_start")
-        # self.code.append(f"SHR {dividend_register}")
-        # self.code.append(f"RESET {temp_register}")
-        # self.code.append(f"ADD {temp_register} {divisor_register}")
-        # self.code.append(f"SUB {temp_register} {dividend_register}")
-        # self.code.append(f"JZERO {temp_register} 2")
-        # self.code.append(f"JUMP finish")
-        # self.code.append(f"SHL {quotient_register}")
-        # self.code.append(f"JUMP midblock_start")
-        # end = len(self.code)
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fourth_reg}")
+        self.code.append(f"JPOS 11")
+        self.code.append(f"RESET a")
+        self.code.append(f"SUB {fourth_reg}")
+        self.code.append(f"SWAP {fourth_reg}")
 
-        # for i in range(start, end):
-        #     self.code[i] = self.code[i].replace('midblock_start', str(midblock_start - i))
-        #     self.code[i] = self.code[i].replace('block_start', str(block_start - i))
-        #     self.code[i] = self.code[i].replace('finish', str(end - i))
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fifth_reg}")
+        self.code.append(f"JPOS 11")
+        self.code.append(f"RESET a")
+        self.code.append(f"SUB {fifth_reg}")
+        self.code.append(f"SWAP {fifth_reg}")
+        self.code.append(f"JUMP 8")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fifth_reg}")
+        self.code.append(f"JPOS 5")
+        self.code.append(f"RESET a")
+        self.code.append(f"SUB {fifth_reg}")
+        self.code.append(f"SWAP {fifth_reg}")
+        self.code.append(f"JUMP 58")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fourth_reg}")
+        self.code.append(f"RESET {seventh_reg}")
+        self.code.append(f"DEC {third_reg}")
+        self.code.append(f"JZERO 4")
+        self.code.append(f"SHIFT {third_reg}")
+        self.code.append(f"INC {seventh_reg}")
+        self.code.append(f"JUMP -3")
+        self.code.append(f"INC {third_reg}")
+        self.code.append(f"SWAP {seventh_reg}")
+        self.code.append(f"JNEG 44")
+        self.code.append(f"SWAP {seventh_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fourth_reg}")
+        self.code.append(f"SWAP {sixth_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {seventh_reg}")
+        self.code.append(f"JZERO 9")
+        self.code.append(f"SWAP {eighth_reg}")
+        self.code.append(f"RESET a")
+        self.code.append(f"SWAP {sixth_reg}")
+        self.code.append(f"DEC {sixth_reg}")
+        self.code.append(f"SHIFT {sixth_reg}")
+        self.code.append(f"SWAP {sixth_reg}")
+        self.code.append(f"ADD {eighth_reg}")
+        self.code.append(f"JUMP -8")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"INC a")
+        self.code.append(f"SWAP {second_reg}")
+        self.code.append(f"SHIFT {second_reg}")
+        self.code.append(f"SWAP {second_reg}")
+        self.code.append(f"SWAP {third_reg}")
+        self.code.append(f"SHIFT {third_reg}")
+        self.code.append(f"SWAP {third_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {sixth_reg}")
+        self.code.append(f"RESET {eighth_reg}")
+        self.code.append(f"DEC {eighth_reg}")
+        self.code.append(f"SHIFT {eighth_reg}")
+        self.code.append(f"INC {eighth_reg}")
+        self.code.append(f"INC {eighth_reg}")
+        self.code.append(f"SHIFT {eighth_reg}")
+        self.code.append(f"SUB {sixth_reg}")
+        self.code.append(f"JZERO 2")
+        self.code.append(f"INC {third_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {third_reg}")
+        self.code.append(f"SUB {fifth_reg}")
+        self.code.append(f"JNEG 3")
+        self.code.append(f"INC {second_reg}")
+        self.code.append(f"SWAP {third_reg}")
+        self.code.append(f"RESET a")
+
+        self.code.append(f"DEC {seventh_reg}")
+        self.code.append(f"JUMP -44")
+        self.code.append(f"SWAP {second_reg}")
+        self.code.append(f"JUMP 57")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fourth_reg}")
+        self.code.append(f"RESET {seventh_reg}")
+        self.code.append(f"DEC {third_reg}")
+        self.code.append(f"JZERO 4")
+        self.code.append(f"SHIFT {third_reg}")
+        self.code.append(f"INC {seventh_reg}")
+        self.code.append(f"JUMP -3")
+        self.code.append(f"INC {third_reg}")
+        self.code.append(f"SWAP {seventh_reg}")
+        self.code.append(f"JNEG 44")
+        self.code.append(f"SWAP {seventh_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {fourth_reg}")
+        self.code.append(f"SWAP {sixth_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {seventh_reg}")
+        self.code.append(f"JZERO 9")
+        self.code.append(f"SWAP {eighth_reg}")
+        self.code.append(f"RESET a")
+        self.code.append(f"SWAP {sixth_reg}")
+        self.code.append(f"DEC {sixth_reg}")
+        self.code.append(f"SHIFT {sixth_reg}")
+        self.code.append(f"SWAP {sixth_reg}")
+        self.code.append(f"ADD {eighth_reg}")
+        self.code.append(f"JUMP -8")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"INC a")
+        self.code.append(f"SWAP {second_reg}")
+        self.code.append(f"SHIFT {second_reg}")
+        self.code.append(f"SWAP {second_reg}")
+        self.code.append(f"SWAP {third_reg}")
+        self.code.append(f"SHIFT {third_reg}")
+        self.code.append(f"SWAP {third_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {sixth_reg}")
+        self.code.append(f"RESET {eighth_reg}")
+        self.code.append(f"DEC {eighth_reg}")
+        self.code.append(f"SHIFT {eighth_reg}")
+        self.code.append(f"INC {eighth_reg}")
+        self.code.append(f"INC {eighth_reg}")
+        self.code.append(f"SHIFT {eighth_reg}")
+        self.code.append(f"SUB {sixth_reg}")
+        self.code.append(f"JZERO 2")
+        self.code.append(f"INC {third_reg}")
+
+        self.code.append(f"RESET a")
+        self.code.append(f"ADD {third_reg}")
+        self.code.append(f"SUB {fifth_reg}")
+        self.code.append(f"JNEG 3")
+        self.code.append(f"INC {second_reg}")
+        self.code.append(f"SWAP {third_reg}")
+        self.code.append(f"RESET a")
+
+        self.code.append(f"DEC {seventh_reg}")
+        self.code.append(f"JUMP -44")
+        self.code.append(f"RESET a")
+        self.code.append(f"SUB {second_reg}")
+
+        self.code.append(f"SWAP {target_reg}")
 
     def simplify_condition(self, condition):
         if condition[1][0] == "const" and condition[2][0] == "const":
@@ -859,7 +956,6 @@ class CodeGenerator:
             return condition
 
     def check_condition(self, condition, first_reg='a', second_reg='b', third_reg='c'):
-        self.code.append(f"(check condition start {condition[0]})")
         if condition[1][0] == "const" and condition[1][1] == 0:
             if condition[0] == "ge" or condition[0] == "eq":
                 self.calculate_expression(condition[2], first_reg, second_reg)
@@ -885,34 +981,33 @@ class CodeGenerator:
                 self.code.append(f"JZERO finish")
 
         else:
-            self.calculate_expression(condition[1], first_reg, third_reg)
-            self.calculate_expression(condition[2], second_reg, third_reg)
+            self.calculate_expression(condition[1], third_reg, second_reg)
+            self.calculate_expression(condition[2], second_reg, first_reg)
 
             if condition[0] == "le":
-
-                self.code.append(f"SUB {second_reg}")
-                self.code.append(f"JZERO 2")
-                self.code.append(f"JUMP finish")
+                self.code.append(f"SWAP {second_reg}")
+                self.code.append(f"SUB {third_reg}")
+                self.code.append(f"JNEG finish")
 
             elif condition[0] == "ge":
                 self.code.append(f"SWAP {second_reg}")
-                self.code.append(f"SUB {second_reg}")
-                self.code.append(f"JZERO 2")
-                self.code.append(f"JUMP finish")
+                self.code.append(f"SUB {third_reg}")
+                self.code.append(f"JPOS finish")
 
             elif condition[0] == "lt":
-                self.code.append(f"SWAP {second_reg}")
+                self.code.append(f"SWAP {third_reg}")
                 self.code.append(f"SUB {second_reg}")
                 self.code.append(f"JZERO finish")
+                self.code.append(f"JPOS finish")
 
             elif condition[0] == "gt":
+                self.code.append(f"SWAP {third_reg}")
                 self.code.append(f"SUB {second_reg}")
                 self.code.append(f"JZERO finish")
+                self.code.append(f"JNEG finish")
 
             elif condition[0] == "eq":
-                self.code.append(f"RESET {third_reg}")
                 self.code.append(f"SWAP {third_reg}")
-                self.code.append(f"ADD {third_reg}")
                 self.code.append(f"SUB {second_reg}")
                 self.code.append(f"JZERO 2")
                 self.code.append(f"JUMP finish")
@@ -921,14 +1016,9 @@ class CodeGenerator:
                 # self.code.append(f"JUMP finish")
                 # JUMP HERE IS A != B
             elif condition[0] == "ne":
-                self.code.append(f"RESET {third_reg}")
                 self.code.append(f"SWAP {third_reg}")
-                self.code.append(f"ADD {third_reg}")
                 self.code.append(f"SUB {second_reg}")
-                self.code.append(f"JZERO finnish")
-                # JUMP HERE IS A == B
-        self.code.append(f"(check condition stop {condition[0]})")
-
+                self.code.append(f"JZERO finish")
 
     def load_array_at(self, array, index, reg1, reg2):
         self.load_array_address_at(array, index, reg1, reg2)
@@ -937,8 +1027,6 @@ class CodeGenerator:
 
     def load_array_address_at(self, array, index, reg1, reg2):
         # print(array, index, reg1, reg2)
-        self.code.append(f"(load_array_address_at start array={array} r1={reg1} r2={reg2})")
-
         if type(index) == int:
             address = self.symbols.get_address((array, index))
             self.gen_const(address, reg1)
@@ -962,7 +1050,7 @@ class CodeGenerator:
 
             var = self.symbols.get_variable(array)
             self.gen_const(var.memory_offset - var.first_index, reg1)
-            print(var.memory_offset - var.first_index)
+            # print(var.memory_offset - var.first_index)
 
             self.code.append(f"SWAP {reg1}")
             self.code.append(f"ADD {reg2}")
@@ -974,11 +1062,8 @@ class CodeGenerator:
             # # self.code.append(f"PUT")
             # self.code.append(f"SWAP {reg1}")
 
-        self.code.append(f"(load_array_address_at stop {array} {reg1} {reg2})")
-
 
     def load_variable(self, name, reg, declared=True):
-        self.code.append(f"(load_variable start name={name} reg={reg})")
 
         if not declared and self.iterators and name == self.iterators[-1]:
             self.code.append(f"RESET {reg}")
@@ -989,26 +1074,23 @@ class CodeGenerator:
             self.load_variable_address(name, reg, declared)
             self.code.append(f"LOAD {reg}")
             self.code.append(f"SWAP {reg}")
-        self.code.append(f"(load_variable stop {name} {reg})")
 
     def load_variable_address(self, name, reg, declared=True):
         if declared or name in self.iterators:
             address = self.symbols.get_address(name)
             self.gen_const(address, reg)
             if self.iterators and name == self.iterators[-1]:
-                self.code.append(f"(load_variable_address start {name} {reg})")
                 self.code.append(f"STORE {reg}")
-                self.code.append(f"(load_variable_address stop {name} {reg})")
         else:
             raise Exception(f"Undeclared variable {name}")
 
-    def prepare_consts_before_block(self, consts, reg1='a', reg2='b'):
+    def prepare_consts_before_block(self, consts, reg1='a', reg2='b', reg3='c'):
         for c in consts:
             address = self.symbols.get_const(c)
             if address is None:
                 address = self.symbols.add_const(c)
-                self.gen_const(address, reg1)
+                print(c, address)
+                self.gen_const(address, reg3)
                 self.gen_const(c, reg2)
                 self.code.append(f"SWAP {reg2}")
-                self.code.append(f"STORE {reg1}")
-                
+                self.code.append(f"STORE {reg3}")
