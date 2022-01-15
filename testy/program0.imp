@@ -1,5 +1,5 @@
 VAR
-    n p
+    n, p
 BEGIN
     READ n;
     IF n GEQ 0 THEN
