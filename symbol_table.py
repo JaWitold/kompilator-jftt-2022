@@ -60,6 +60,8 @@ class SymbolTable(dict):
         return self.memory_offset - 1
 
     def add_iterator(self, name):
+        print("[ITERATOR] adding ", name, self.memory_offset)
+
         last_address = self.memory_offset
         self.memory_offset += 1
         self.iterators.setdefault(name, Iterator(self.memory_offset, last_address))

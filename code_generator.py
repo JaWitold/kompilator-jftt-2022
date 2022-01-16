@@ -1,3 +1,4 @@
+from array import array
 from symbol_table import SymbolTable, Variable
 
 
@@ -36,18 +37,12 @@ class CodeGenerator:
                                 self.code.append(f"LOAD {register}")
                             else:
                                 if value[1][2][1][0] == "undeclared":
+                                    print(value)
                                     if value[1][2][1][1] in self.iterators:
                                         self.load_array_address_at(value[1][1], value[1][2], 'd', register1)
-                                        self.code.append(f"SWAP d")
-                                        address = self.symbols.get_address(value[1][1])
-                                        self.gen_const(address, register1)
-
-                                        self.code.append(f"SWAP d")
-                                        self.code.append(f"LOAD a")
-                                        
-                                        self.code.append(f"ADD {register1}")
-
+                                        self.code.append(f"SWAP {register}")
                                         self.code.append(f"LOAD {register}")
+
                                     else:
                                         raise Exception("Tried to write unknown variable or iterator")
                                 else:
@@ -111,7 +106,7 @@ class CodeGenerator:
                 target_reg = 'a'
                 second_reg = 'b'
                 third_reg = 'c'
-                print(expression)
+                # print(expression)
                 self.calculate_expression(expression)
                 # self.code.append(f"PUT")
                 self.code.append(f"SWAP h")
@@ -124,27 +119,29 @@ class CodeGenerator:
                             raise Exception(f"Assigning to undeclared variable {target[1]}")
                     elif target[0] == "array":
                         if type(target[2]) == int:
+                            # print("ASFGFAF")
                             self.load_array_address_at(target[1], target[2], second_reg, third_reg)
                         else:
                             if type(target[2]) != tuple:
+                                print(target)
                                 self.load_array_address_at(target[1], target[2], second_reg, third_reg)
                                 #TEN SWAP JEST ŹRÓŁEM PROBLEMÓW
                                 # self.code.append(f"SWAP {second_reg}")
+                                # self.code.append(f"PUT")
                             else:
                                 if target[2][1][0] == "undeclared":
                                     if target[2][1][1] in self.iterators:
-                                        self.load_array_address_at(target[1], target[2], 'd', second_reg)
-                                        self.code.append(f"SWAP d")
-                                        address = self.symbols.get_address(target[1])
-                                        self.gen_const(address, second_reg)
+                                        #adress tablicy jest iteratorem
+                                        self.load_array_address_at(target[1], target[2], second_reg, third_reg)
 
-                                        self.code.append(f"SWAP d")
-                                        self.code.append(f"LOAD a")
+                                        # self.code.append(f"SWAP {second_reg}")
+                                        # self.code.append(f"PUT")
+                                        # self.code.append(f"SWAP {second_reg}")
                                         
-                                        self.code.append(f"ADD {second_reg}")
-                                        self.code.append(f"SWAP {second_reg}")
                                     else:
                                         raise Exception("Tried to write unknown variable or iterator")
+                                else:
+                                    self.load_array_address_at(target[1], target[2], second_reg, third_reg)
 
                 else:
                     if type(self.symbols[target]) == Variable:
@@ -176,7 +173,7 @@ class CodeGenerator:
 
             elif command[0] == "ifelse":
                 condition = self.simplify_condition(command[1])
-                print(condition)
+                # print(condition)
                 if isinstance(condition, bool):
                     if condition:
                         self.gen_code_from_commands(command[2])
@@ -234,6 +231,8 @@ class CodeGenerator:
                 iterator = command[1]
                 address, bound_address = self.symbols.add_iterator(iterator)
                 print("iter address ", address)
+                # print("bound address ", bound_address)
+
                 self.calculate_expression(command[3], 'e')  #do
                 self.gen_const(bound_address, 'd')
                 self.code.append("SWAP e")
@@ -303,6 +302,8 @@ class CodeGenerator:
                 self.code[ff] = f"JUMP {loop_end - loop_start + 1}"
                 self.code[finnish] = f"JUMP {finnish - zero_jump}"
                 self.iterators.pop()
+                self.symbols.memory_offset -= 2
+                # print("iterators: ", self.iterators)
                 if self.iterators:
                     address, bound_address = self.symbols.get_iterator(self.iterators[-1])
                     self.gen_const(address, 'f')
@@ -319,6 +320,7 @@ class CodeGenerator:
                 iterator = command[1]
                 address, bound_address = self.symbols.add_iterator(iterator)
                 print("iter address ", address)
+                # print("bound address ", bound_address)
 
                 self.calculate_expression(command[3], 'e')  #do
                 self.gen_const(bound_address, 'd')
@@ -331,7 +333,7 @@ class CodeGenerator:
                 self.gen_const(address, 'd')
                 self.code.append("SWAP f")
                 self.code.append("STORE d")
-                self.code.append("PUT")
+                # self.code.append("PUT")
                 self.code.append("SWAP f")
 
                 self.code.append("RESET a")
@@ -340,10 +342,10 @@ class CodeGenerator:
 
                 jpos = len(self.code)
                 self.code.append("JPOS finish")
-                self.code.append("JZERO finish-1")
+                # self.code.append("JZERO finish-1")
 
                 self.code.append("RESET a")
-
+                # self.code.append("JUMP 2")
                 self.iterators.append(iterator)
                 condition_start = len(self.code)
                 #JEŚLI FROM JEST MNIEJSZY lub równy TO to nie wykonuj pętli
@@ -358,9 +360,8 @@ class CodeGenerator:
 
                 self.gen_const(bound_address, 'a')
                 self.code.append("LOAD a")
-                self.code.append("SUB f")
-
-                self.code.append("DEC a")
+                self.code.append("SUB f") #iterator - lower_bound
+                # self.code.append("DEC a")
 
                 self.code.append("JPOS 3")
                 self.code.append("SWAP d")
@@ -389,11 +390,14 @@ class CodeGenerator:
 
                 self.code[ls] = f"JUMP {loop_start - condition_start}"
                 self.code[jpos] = f"JPOS {ff - jpos}"
-                self.code[jpos + 1] = f"JZERO {ff - jpos -1}"
+                # self.code[jpos + 1] = f"JZERO {ff - jpos -1}"
                 self.code[ff] = f"JUMP {loop_end - loop_start + 1}"
                 self.code[finnish] = f"JUMP {finnish - zero_jump}"
                 
                 self.iterators.pop()
+                # print("iterators: ", self.iterators)
+                self.symbols.memory_offset -= 2
+
                 if self.iterators:
                     address, bound_address = self.symbols.get_iterator(self.iterators[-1])
                     self.gen_const(address, 'f')
@@ -438,7 +442,7 @@ class CodeGenerator:
                 if expression[1][0] == "undeclared":
                     if expression[1][1] in self.iterators:
                         address = self.symbols.get_address(expression[1][1])
-                        print("address: ", address)
+                        print("[LOAD] address: ", address, expression[1][1])
                         self.gen_const(address, second_reg)
                         self.code.append(f"LOAD {second_reg}")
                         self.code.append(f"SWAP {target_reg}")
@@ -1103,6 +1107,15 @@ class CodeGenerator:
                     address = self.symbols.get_address(index[1][1])
                     self.gen_const(address, reg2)
                     self.code.append(f"SWAP {reg2}")
+                    self.code.append(f"LOAD a")
+                    self.code.append(f"SWAP {reg2}")
+
+                    var = self.symbols.get_variable(array)
+                    self.gen_const(var.memory_offset - var.first_index, reg1)
+                    # print(var.memory_offset - var.first_index)
+                    self.code.append(f"SWAP {reg1}")
+                    self.code.append(f"ADD {reg2}")
+                    self.code.append(f"SWAP {reg1}")
                     return
                 else:
                     self.load_variable(index[1][1], reg2, declared=False)
@@ -1163,7 +1176,7 @@ class CodeGenerator:
             address = self.symbols.get_const(c)
             if address is None:
                 address = self.symbols.add_const(c)
-                print(c, address)
+                # print(c, address)
                 self.gen_const(address, reg3)
                 self.gen_const(c, reg2)
                 self.code.append(f"SWAP {reg2}")
