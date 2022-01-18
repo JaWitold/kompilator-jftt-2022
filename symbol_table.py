@@ -41,12 +41,16 @@ class SymbolTable(dict):
         self.iterators = {}
 
     def add_variable(self, name):
+        # print("[VARIABLE] adding ", name, self.memory_offset)
+
         if name in self:
             raise Exception(f"Redeclaration of {name}")
         self.setdefault(name, Variable(self.memory_offset))
         self.memory_offset += 1
 
     def add_array(self, name, begin, end):
+        # print("[ARRAY] adding ", name, self.memory_offset)
+
         if name in self:
             raise Exception(f"Redeclaration of {name}")
         elif begin > end:
@@ -55,6 +59,8 @@ class SymbolTable(dict):
         self.memory_offset += (end - begin) + 1
 
     def add_const(self, value):
+        print("[CONST] adding ", value, self.memory_offset)
+
         self.consts.setdefault(value, self.memory_offset)
         self.memory_offset += 1
         return self.memory_offset - 1

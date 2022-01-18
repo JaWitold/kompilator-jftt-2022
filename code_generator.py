@@ -37,11 +37,11 @@ class CodeGenerator:
                                 self.code.append(f"LOAD {register}")
                             else:
                                 if value[1][2][1][0] == "undeclared":
-                                    print(value)
+                                    # print(value)
                                     if value[1][2][1][1] in self.iterators:
                                         self.load_array_address_at(value[1][1], value[1][2], 'd', register1)
                                         self.code.append(f"SWAP {register}")
-                                        self.code.append(f"LOAD {register}")
+                                        self.code.append(f"LOAD d")
 
                                     else:
                                         raise Exception("Tried to write unknown variable or iterator")
@@ -60,11 +60,7 @@ class CodeGenerator:
                 elif value[0] == "const":
                     address = self.symbols.get_const(value[1])
                     if address is None:
-                        address = self.symbols.add_const(value[1])
-                        self.gen_const(address, register1)
-                        self.gen_const(value[1], register)
-                        self.code.append(f"SWAP {register1}")
-                        self.code.append(f"STORE {register}")
+                        self.gen_const(value[1], register1)
                         self.code.append(f"SWAP {register1}")
                     else:
                         self.gen_const(address, register)
@@ -72,11 +68,9 @@ class CodeGenerator:
                 self.code.append(f"PUT")
 
             elif command[0] == "read":
-
                 target = command[1]
                 register = 'a'
                 register1 = 'b'
-
                 if type(target) == tuple:
                     if target[0] == "undeclared":
                         if target[1] in self.symbols.iterators:
@@ -123,7 +117,7 @@ class CodeGenerator:
                             self.load_array_address_at(target[1], target[2], second_reg, third_reg)
                         else:
                             if type(target[2]) != tuple:
-                                print(target)
+                                # print(target)
                                 self.load_array_address_at(target[1], target[2], second_reg, third_reg)
                                 #TEN SWAP JEST ŹRÓŁEM PROBLEMÓW
                                 # self.code.append(f"SWAP {second_reg}")
@@ -162,7 +156,7 @@ class CodeGenerator:
                     if condition:
                         self.gen_code_from_commands(command[2])
                 else:
-                    self.prepare_consts_before_block(command[-1])
+                    self.prepare_consts_before_block(command[-1], froM="if")
                     condition_start = len(self.code)
                     self.check_condition(condition)
                     command_start = len(self.code)
@@ -170,6 +164,7 @@ class CodeGenerator:
                     command_end = len(self.code)
                     for i in range(condition_start, command_start):
                         self.code[i] = self.code[i].replace('finish', str(command_end - i))
+                    self.remove_prepared_consts(command[-1])
 
             elif command[0] == "ifelse":
                 condition = self.simplify_condition(command[1])
@@ -180,7 +175,7 @@ class CodeGenerator:
                     else:
                         self.gen_code_from_commands(command[3])
                 else:
-                    self.prepare_consts_before_block(command[-1])
+                    self.prepare_consts_before_block(command[-1], froM="ifelse")
                     condition_start = len(self.code)
                     self.check_condition(command[1])
                     if_start = len(self.code)
@@ -189,21 +184,23 @@ class CodeGenerator:
                     else_start = len(self.code)
                     self.gen_code_from_commands(command[3])
                     command_end = len(self.code)
-                    self.code[else_start - 1] = self.code[else_start - 1].replace('finish',
-                                                                                  str(command_end - else_start + 1))
+                    self.code[else_start - 1] = self.code[else_start - 1].replace('finish', str(command_end - else_start + 1))
                     for i in range(condition_start, if_start):
                         self.code[i] = self.code[i].replace('finish', str(else_start - i))
+                    self.remove_prepared_consts(command[-1])
 
             elif command[0] == "while":
                 condition = self.simplify_condition(command[1])
                 if isinstance(condition, bool):
                     if condition:
-                        self.prepare_consts_before_block(command[-1])
+                        self.prepare_consts_before_block(command[-1], froM="while")
                         loop_start = len(self.code)
                         self.gen_code_from_commands(command[2])
                         self.code.append(f"JUMP {loop_start - len(self.code)}")
+                        self.remove_prepared_consts(command[-1])
+
                 else:
-                    self.prepare_consts_before_block(command[-1])
+                    self.prepare_consts_before_block(command[-1], froM="while")
                     condition_start = len(self.code)
                     self.check_condition(command[1])
                     loop_start = len(self.code)
@@ -212,6 +209,7 @@ class CodeGenerator:
                     loop_end = len(self.code)
                     for i in range(condition_start, loop_start):
                         self.code[i] = self.code[i].replace('finish', str(loop_end - i))
+                    self.remove_prepared_consts(command[-1])
 
             elif command[0] == "until":
                 loop_start = len(self.code)
@@ -226,8 +224,7 @@ class CodeGenerator:
                 if command[2][0] == command[3][0] == "const":
                     if command[2][1] > command[3][1]:
                         continue
-                self.prepare_consts_before_block(command[-1])
-
+                self.prepare_consts_before_block(command[-1], froM="forup")
                 iterator = command[1]
                 address, bound_address = self.symbols.add_iterator(iterator)
                 print("iter address ", address)
@@ -248,9 +245,10 @@ class CodeGenerator:
                 self.code.append("RESET a")
                 self.code.append("ADD e")
                 self.code.append("SUB f")
+                # self.code.append("PUT")
                 jpos = len(self.code)
                 self.code.append("JNEG finish")
-                self.code.append("JZERO finish-1")
+                # self.code.append("JZERO finish-1")
 
                 self.code.append("RESET a")
 
@@ -298,24 +296,25 @@ class CodeGenerator:
 
                 self.code[ls] = f"JUMP {loop_start - condition_start}"
                 self.code[jpos] = f"JNEG {ff - jpos}"
-                self.code[jpos + 1] = f"JZERO {ff - jpos -1}"
+                # self.code[jpos + 1] = f"JZERO {ff - jpos -1}"
                 self.code[ff] = f"JUMP {loop_end - loop_start + 1}"
                 self.code[finnish] = f"JUMP {finnish - zero_jump}"
                 self.iterators.pop()
                 self.symbols.memory_offset -= 2
                 # print("iterators: ", self.iterators)
+                # print("consts: ", self.symbols.consts)
                 if self.iterators:
                     address, bound_address = self.symbols.get_iterator(self.iterators[-1])
                     self.gen_const(address, 'f')
                     self.code.append(f"LOAD f")
                     self.code.append(f"SWAP f")
+                self.remove_prepared_consts(command[-1])
 
             elif command[0] == "fordown":
                 if command[2][0] == command[3][0] == "const":
                     if command[2][1] < command[3][1]:
                         continue
-                
-                self.prepare_consts_before_block(command[-1])
+                self.prepare_consts_before_block(command[-1], froM="fordown")
 
                 iterator = command[1]
                 address, bound_address = self.symbols.add_iterator(iterator)
@@ -403,6 +402,7 @@ class CodeGenerator:
                     self.gen_const(address, 'f')
                     self.code.append(f"LOAD f")
                     self.code.append(f"SWAP f")
+                self.remove_prepared_consts(command[-1])
 
     def gen_const(self, const, reg='a'):
         self.code.append(f"RESET {reg}")
@@ -442,7 +442,7 @@ class CodeGenerator:
                 if expression[1][0] == "undeclared":
                     if expression[1][1] in self.iterators:
                         address = self.symbols.get_address(expression[1][1])
-                        print("[LOAD] address: ", address, expression[1][1])
+                        # print("[LOAD] address: ", address, expression[1][1])
                         self.gen_const(address, second_reg)
                         self.code.append(f"LOAD {second_reg}")
                         self.code.append(f"SWAP {target_reg}")
@@ -958,7 +958,7 @@ class CodeGenerator:
         self.code.append(f"DEC {seventh_reg}")
         self.code.append(f"JUMP -44")
         self.code.append(f"SWAP {second_reg}")
-        self.code.append(f"JUMP 57")
+        self.code.append(f"JUMP 58")
 
         self.code.append(f"RESET a")
         self.code.append(f"ADD {fourth_reg}")
@@ -1022,11 +1022,12 @@ class CodeGenerator:
         self.code.append(f"JUMP -44")
         self.code.append(f"RESET a")
         self.code.append(f"SUB {second_reg}")
+        self.code.append(f"DEC a")
 
         self.code.append(f"SWAP {target_reg}")
 
     def simplify_condition(self, condition):
-        print(condition)
+        # print(condition)
         if condition[1][0] == "const" and condition[2][0] == "const":
             if condition[0] == "le":
                 return condition[1][1] <= condition[2][1]
@@ -1050,7 +1051,7 @@ class CodeGenerator:
             return condition
 
     def check_condition(self, condition, first_reg='a', second_reg='b', third_reg='c'):
-        print(condition[0])
+        # print(condition[0])
         self.calculate_expression(condition[1], third_reg, second_reg)
         self.calculate_expression(condition[2], second_reg, first_reg)
 
@@ -1106,13 +1107,15 @@ class CodeGenerator:
                 if index[1][0] == "undeclared":
                     address = self.symbols.get_address(index[1][1])
                     self.gen_const(address, reg2)
+                    print(address)
                     self.code.append(f"SWAP {reg2}")
                     self.code.append(f"LOAD a")
+                    # self.code.append(f"PUT")
                     self.code.append(f"SWAP {reg2}")
 
                     var = self.symbols.get_variable(array)
-                    self.gen_const(var.memory_offset - var.first_index, reg1)
-                    # print(var.memory_offset - var.first_index)
+                    self.gen_const(var.memory_offset - var.first_index , reg1)
+                    print(var)
                     self.code.append(f"SWAP {reg1}")
                     self.code.append(f"ADD {reg2}")
                     self.code.append(f"SWAP {reg1}")
@@ -1171,13 +1174,18 @@ class CodeGenerator:
         else:
             raise Exception(f"Undeclared variable {name}")
 
-    def prepare_consts_before_block(self, consts, reg1='a', reg2='b', reg3='c'):
+    def prepare_consts_before_block(self, consts, reg1='a', reg2='b', reg3='c', froM="void"):
+        # print(consts, froM)
         for c in consts:
             address = self.symbols.get_const(c)
             if address is None:
                 address = self.symbols.add_const(c)
-                # print(c, address)
                 self.gen_const(address, reg3)
                 self.gen_const(c, reg2)
                 self.code.append(f"SWAP {reg2}")
                 self.code.append(f"STORE {reg3}")
+
+    def remove_prepared_consts(self, consts):
+        for i in consts:
+            self.symbols.consts.pop(i)
+            self.symbols.memory_offset -= 1
