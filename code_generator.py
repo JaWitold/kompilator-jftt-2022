@@ -101,6 +101,7 @@ class CodeGenerator:
                 second_reg = 'b'
                 third_reg = 'c'
                 # print(expression)
+                # print(self.iterators)
                 self.calculate_expression(expression)
                 # self.code.append(f"PUT")
                 self.code.append(f"SWAP h")
@@ -300,6 +301,7 @@ class CodeGenerator:
                 self.code[ff] = f"JUMP {loop_end - loop_start + 1}"
                 self.code[finnish] = f"JUMP {finnish - zero_jump}"
                 self.iterators.pop()
+                print(self.iterators)
                 self.symbols.memory_offset -= 2
                 # print("iterators: ", self.iterators)
                 # print("consts: ", self.symbols.consts)
@@ -449,7 +451,16 @@ class CodeGenerator:
                     else:
                         raise Exception("Tried to write unknown variable or iterator")
                 elif expression[1][0] == "array":
-                    self.load_array_at(expression[1][1], expression[1][2], target_reg, second_reg)
+                    if type(expression[1][2]) != tuple:
+                        self.load_array_at(expression[1][1], expression[1][2], target_reg, second_reg)
+                    else:
+                        if expression[1][2][1][0] == "undeclared":
+                            if expression[1][2][1][1] in self.iterators:
+                                self.load_array_at(expression[1][1], expression[1][2], target_reg, second_reg)
+                            else:
+                                raise Exception(f"Use of uninitialized iterator")
+                        else:
+                            self.load_array_at(expression[1][1], expression[1][2], target_reg, second_reg)
             else:
                 if self.symbols[expression[1]].initialized:
                     self.load_variable(expression[1], target_reg)
@@ -1115,7 +1126,7 @@ class CodeGenerator:
 
                     var = self.symbols.get_variable(array)
                     self.gen_const(var.memory_offset - var.first_index , reg1)
-                    print(var)
+                    # print(var)
                     self.code.append(f"SWAP {reg1}")
                     self.code.append(f"ADD {reg2}")
                     self.code.append(f"SWAP {reg1}")
