@@ -1,12 +1,16 @@
-class Variable:
+class MemoryCell:
   def __init__(self, memory_offset):
     self.memory_offset = memory_offset
+
+class Variable(MemoryCell):
+  def __init__(self, memory_offset):
+    super().__init__(memory_offset)
     self.initialized = False
 
-class Array:
+class Array(MemoryCell):
   def __init__(self, pidentifier, memory_offset, first_index, last_index):
+    super().__init__(memory_offset)
     self.pidentifier = pidentifier
-    self.memory_offset = memory_offset
     self.first_index = first_index
     self.last_index = last_index
 
@@ -14,11 +18,11 @@ class Array:
     if self.first_index <= index <= self.last_index:
       return self.memory_offset - self.first_index + index
     else:
-      raise Exception(f"Index {index} out of range for array {self.pidentifier}")
+      raise Exception(f"Indeks {index} jest poza zakresem {self.pidentifier}[{self.first_index}:{self.last_index}]")
 
-class Iterator:
+class Iterator(MemoryCell):
   def __init__(self, memory_offset, limit_address):
-    self.memory_offset = memory_offset
+    super().__init__(memory_offset)
     self.limit_address = limit_address
 
 class Memory(dict):
@@ -28,9 +32,9 @@ class Memory(dict):
     self.consts = {}
     self.iterators = {}
 
-  def add_variable(self, pidentifier):
+  def set_variable(self, pidentifier):
     if pidentifier in self:
-      raise Exception(f"Redeclaration of {pidentifier}")
+      raise Exception(f"Redeklaracja {pidentifier}")
     self.setdefault(pidentifier, Variable(self.memory_offset))
     self.memory_offset += 1
 
@@ -40,13 +44,13 @@ class Memory(dict):
     elif pidentifier in self.iterators:
       return self.iterators[pidentifier]
     else:
-      raise Exception(f"Undeclared variable {pidentifier}")
+      raise Exception(f"Niezadeklarowana zmienna {pidentifier}")
 
   def set_array(self, pidentifier, first_index, last_index):
     if pidentifier in self:
-      raise Exception(f"Redeclaration of {pidentifier}")
+      raise Exception(f"Redeklaracja {pidentifier}")
     elif first_index > last_index:
-      raise Exception(f"Wrong range in declaration of {pidentifier}")
+      raise Exception(f"Niepoprawny zakres w tablicy {pidentifier}, {first_index} powinno być mniejsze lub równe {last_index}")
     self.setdefault(pidentifier, Array(pidentifier, self.memory_offset, first_index, last_index))
     self.memory_offset += last_index - first_index + 1
 
@@ -55,16 +59,16 @@ class Memory(dict):
       try:
         return self[pidentifier].get_at(index)
       except AttributeError:
-        raise Exception(f"Non-array {pidentifier} used as an array")
+        raise Exception(f"Nie poprawne użycie {pidentifier} jako tablicy")
     else:
-      raise Exception(f"Undeclared array {pidentifier}")
+      raise Exception(f"Niezadeklarowana tablice {pidentifier}")
 
   def set_iterator(self, pidentifier):
     last_address = self.memory_offset
-    self.memory_offset += 1
-    self.iterators.setdefault(pidentifier, Iterator(self.memory_offset, last_address))
-    self.memory_offset += 1
-    return self.memory_offset - 1, last_address
+    iterator_address = self.memory_offset + 1
+    self.iterators.setdefault(pidentifier, Iterator(iterator_address, last_address))
+    self.memory_offset += 2
+    return iterator_address, last_address
 
   def get_iterator(self, pidentifier):
     if pidentifier in self.iterators:
@@ -72,9 +76,10 @@ class Memory(dict):
       return iterator.memory_offset, iterator.limit_address
 
   def set_const(self, value):
-    self.consts.setdefault(value, self.memory_offset)
+    const_address = self.memory_offset
+    self.consts.setdefault(value, const_address)
     self.memory_offset += 1
-    return self.memory_offset - 1
+    return const_address
 
   def get_const(self, value):
     if value in self.consts:

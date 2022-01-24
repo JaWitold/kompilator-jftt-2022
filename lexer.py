@@ -52,4 +52,4 @@ class CompilerLexer(Lexer):
     return t
 
   def error(self, t):
-    raise Exception(f"Illegal character '{t.value[0]}'")
+    raise Exception(f"Nierozpoznany symbol '{t.value[0]}'")

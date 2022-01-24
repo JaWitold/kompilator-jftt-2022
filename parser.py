@@ -1,7 +1,7 @@
 from sly import Parser
 from lexer import CompilerLexer
 from memory import Memory, Array, Variable
-from code_generator import CodeGenerator
+from compiler import Compiler
 
 class CompilerParser(Parser):
   tokens = CompilerLexer.tokens
@@ -10,11 +10,11 @@ class CompilerParser(Parser):
 
   @_('VAR declarations BEGIN commands END', 'BEGIN commands END')
   def program(self, p):
-     return CodeGenerator(p.commands, self.memory)
+     return Compiler(p.commands, self.memory)
 
   @_('declarations "," PIDENTIFIER')
   def declarations(self, p):
-    self.memory.add_variable(p[-1])
+    self.memory.set_variable(p[-1])
 
   @_('declarations "," PIDENTIFIER "[" NUMBER ":" NUMBER "]" ')
   def declarations(self, p):
@@ -22,7 +22,7 @@ class CompilerParser(Parser):
 
   @_('PIDENTIFIER')
   def declarations(self, p):
-    self.memory.add_variable(p[-1])
+    self.memory.set_variable(p[-1])
 
   @_('PIDENTIFIER "[" NUMBER ":" NUMBER "]"')
   def declarations(self, p):
@@ -165,4 +165,4 @@ class CompilerParser(Parser):
       raise Exception(f"Undeclared array {p[0]}")
 
   def error(self, token):
-    raise Exception(f"Syntax error: '{token.value}'")
+    raise Exception(f"Błąd składni: '{token.value}'")
