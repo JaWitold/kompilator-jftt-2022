@@ -1,0 +1,42 @@
+(* a=[a/b]*b+a%b
+
+   ? 26
+   ? 7
+
+   > 3
+   > 5
+   > -4
+   > -2
+   > 3
+   > -5
+   > -4
+   > 2
+*)
+VAR
+    a, b, c
+BEGIN
+    READ a;
+    READ b;
+    c ASSIGN a DIV b;
+    WRITE c;
+    c ASSIGN a MOD b;
+    WRITE c;
+
+    b ASSIGN -1 TIMES b; ( a,-b )
+    c ASSIGN a DIV b;
+    WRITE c;
+    c ASSIGN a MOD b;
+    WRITE c;
+
+    a ASSIGN a TIMES -1; ( -a,-b )
+    c ASSIGN a DIV b;
+    WRITE c;
+    c ASSIGN a MOD b;
+    WRITE c;
+
+    b ASSIGN -1 TIMES b; ( -a,b )
+    c ASSIGN a DIV b;
+    WRITE c;
+    c ASSIGN a MOD b;
+    WRITE c;
+END
